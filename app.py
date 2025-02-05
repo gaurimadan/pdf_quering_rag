@@ -11,7 +11,6 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from dotenv import load_dotenv
 import time
 
-# Load environment variables
 load_dotenv()
 groq_api_key = os.getenv('GROQ_API_KEY')
 os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
@@ -31,15 +30,14 @@ Question: {input}
 """
 )
 
-# Ensure the data directory exists
 DATA_DIR = "./data"
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
-# File uploader for PDFs
+
 uploaded_files = st.file_uploader("Upload PDF(s)", type="pdf", accept_multiple_files=True)
 
-# Save uploaded PDFs to the data directory
+
 if uploaded_files:
     for uploaded_file in uploaded_files:
         file_path = os.path.join(DATA_DIR, uploaded_file.name)
@@ -52,29 +50,23 @@ def vector_embedding():
     if "vectors" not in st.session_state:
         st.session_state.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 
-        # Load PDFs dynamically
         st.session_state.loader = PyPDFDirectoryLoader(DATA_DIR)
         st.session_state.docs = st.session_state.loader.load()
 
-        # Split documents into chunks
         st.session_state.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         st.session_state.final_documents = st.session_state.text_splitter.split_documents(st.session_state.docs)
 
-        # Create vector embeddings
         if st.session_state.final_documents:
             st.session_state.vectors = FAISS.from_documents(st.session_state.final_documents, st.session_state.embeddings)
             st.success("Vector Store DB is ready!")
         else:
             st.error("No documents found to embed. Please upload PDFs.")
 
-# Button to trigger embeddings
 if st.button("Create Embeddings"):
     vector_embedding()
 
-# Input for user question
 prompt1 = st.text_input("Enter Your Question From Documents")
 
-# Process user query if embeddings exist
 if prompt1 and "vectors" in st.session_state:
     document_chain = create_stuff_documents_chain(llm, prompt)
     retriever = st.session_state.vectors.as_retriever()
